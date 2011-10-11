@@ -1,3 +1,4 @@
+set(CMAKE_LEGACY_CYGWIN_WIN32 0)
 cmake_minimum_required(VERSION 2.8)
 PROJECT(leveldb)
 
@@ -30,6 +31,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # link pthread
     set(PORT_SRCS port/port_posix.cc util/env_posix.cc)
     set(CIF_SRCS db/c.cc)
+elseif(CYGWIN)
+    add_definitions(-DLEVELDB_PLATFORM_POSIX -DOS_LINUX)
+    set(PORT_SRCS port/port_posix.cc util/env_posix.cc)
+    set(CIF_SRCS db/c.cc)
 elseif(APPLE)
     add_definitions(-DLEVELDB_PLATFORM_POSIX -DOS_MACOSX)
     set(PORT_SRCS port/port_posix.cc util/env_posix.cc)
@@ -60,6 +65,7 @@ set(SRCS
     table/table.cc
     table/table_builder.cc
     table/two_level_iterator.cc
+    util/env.cc
     util/arena.cc
     util/cache.cc
     util/coding.cc
@@ -74,6 +80,10 @@ set(SRCS
     ${CIF_SRCS}
     )
 
+set(TESTHARNESS_SRCS
+    util/testutil.cc
+    util/testharness.cc)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # CHECK_INCLUDE_FILE(stdint.h HAVE_STDINT_H)
@@ -81,3 +91,40 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(leveldb ${SRCS})
 
+# TESTS
+
+add_library(leveldb-testharness STATIC ${TESTHARNESS_SRCS})
+
+macro(leveldb_test ${nam})
+endmacro()
+
+macro(leveldb_tests)
+    foreach(t ${ARGN})
+        get_filename_component(_tname ${t} NAME_WE)
+        add_executable(${_tname} ${t})
+        target_link_libraries(${_tname}
+            leveldb-testharness
+            leveldb
+            )
+    endforeach()
+endmacro()
+
+leveldb_tests(
+    db/db_bench.cc
+    util/arena_test.cc
+    db/c_test.c
+    util/cache_test.cc
+    util/coding_test.cc
+    db/corruption_test.cc
+    util/crc32c_test.cc
+    db/db_test.cc
+    db/dbformat_test.cc
+    util/env_test.cc
+    db/log_test.cc
+    table/table_test.cc
+    db/skiplist_test.cc
+    db/version_edit_test.cc
+    db/version_set_test.cc
+    db/write_batch_test.cc)
+
+# TODO: memenv_test
